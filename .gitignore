@@ -1,0 +1,15 @@
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+publish/
+TestResults/
+secrets.json
+.env
+.DS_Store
+Thumbs.db
+*.nupkg
+/packages
