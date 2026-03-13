@@ -13,3 +13,4 @@ secrets.json
 Thumbs.db
 *.nupkg
 /packages
+appsettings.json
