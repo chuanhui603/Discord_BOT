@@ -74,7 +74,10 @@ public sealed class OllamaChatClient : IOllamaChatClient
 
     private static string BuildPrompt(ChatRequest request)
     {
-        return $"You are a concise Discord assistant. Answer briefly and clearly.\nMode: {request.QueryMode}\nUser question: {request.Prompt}";
+        var normalizedLocale = ChatLocaleHelper.NormalizeLocale(request.UserLocale);
+        var responseLanguage = ChatLocaleHelper.GetResponseLanguage(request.UserLocale);
+
+        return $"You are a concise Discord assistant. Answer briefly and clearly.\nRespond in {responseLanguage}. If the locale is missing or unsupported, respond in Traditional Chinese.\nUser locale: {normalizedLocale}\nMode: {request.QueryMode}\nUser question: {request.Prompt}";
     }
 
     private static ChatErrorClass MapStatusCode(HttpStatusCode statusCode)

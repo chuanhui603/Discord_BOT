@@ -6,6 +6,7 @@ public sealed record ChatResult(
     ChatResponseSource ResponseSource,
     string? ResponseText,
     bool SessionUpdated,
+    string? UserLocale = null,
     ChatErrorClass? ErrorClass = null,
     ChatFailureStage? FailureStage = null,
     string? ProviderConversationId = null,

@@ -38,7 +38,9 @@ public sealed class DifyChatClient : IDifyChatClient
                     mode = request.QueryMode.ToString().ToLowerInvariant(),
                     guild_id = request.GuildId?.ToString(),
                     channel_id = request.ChannelId.ToString(),
-                    thread_id = request.ThreadId?.ToString()
+                    thread_id = request.ThreadId?.ToString(),
+                    user_locale = ChatLocaleHelper.NormalizeLocale(request.UserLocale),
+                    response_language = ChatLocaleHelper.GetResponseLanguage(request.UserLocale)
                 },
                 query = request.Prompt,
                 response_mode = "blocking",

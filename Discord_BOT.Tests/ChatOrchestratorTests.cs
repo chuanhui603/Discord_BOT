@@ -5,6 +5,9 @@ using Discord_BOT.Services;
 using Discord_BOT.Stores;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text;
 using Xunit;
 
 namespace Discord_BOT.Tests;
@@ -70,6 +73,19 @@ public sealed class ChatOrchestratorTests
     }
 
     [Fact]
+    public async Task NoAnswer_UsesEnglishGuidance_WhenUserLocaleIsEnglish()
+    {
+        var difyClient = new FakeDifyChatClient([ProviderExecutionResult.Guidance(null)]);
+        var ollamaClient = new FakeOllamaChatClient(ProviderExecutionResult.Success("fallback answer"));
+        var orchestrator = CreateOrchestrator(difyClient, ollamaClient, out _);
+
+        var result = await orchestrator.ExecuteAsync(CreateRequest(QueryMode.General, "en-US"), CancellationToken.None);
+
+        Assert.Equal("I do not have enough reliable context to answer that yet. Please provide a more specific document name, clause, or keyword.", result.ResponseText);
+        Assert.Equal("en-US", result.UserLocale);
+    }
+
+    [Fact]
     public async Task PrimarySuccess_UpdatesConversationPointer()
     {
         var difyClient = new FakeDifyChatClient([ProviderExecutionResult.Success("answer", "conv-123")]);
@@ -106,7 +122,84 @@ public sealed class ChatOrchestratorTests
         Assert.Contains("fallback answer", result);
     }
 
-    private static ChatRequest CreateRequest(QueryMode mode)
+    [Fact]
+    public void Formatter_UsesLocalizedWarning_WhenLocaleIsEnglish()
+    {
+        var formatter = new DiscordResponseFormatter(Microsoft.Extensions.Options.Options.Create(new FallbackOptions
+        {
+            DegradedWarningMessage = "warning",
+            UnavailableMessage = "unavailable"
+        }));
+
+        var result = formatter.Format(new ChatResult(
+            ChatOutcome.Degraded,
+            ChatResponseKind.Answer,
+            ChatResponseSource.Fallback,
+            "fallback answer",
+            SessionUpdated: false,
+            UserLocale: "en-US"), true);
+
+        Assert.StartsWith("Warning: fallback mode is active", result);
+        Assert.Contains("fallback answer", result);
+    }
+
+    [Fact]
+    public async Task OllamaClient_IncludesLocaleInstructionInPrompt()
+    {
+        var handler = new CapturingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"response\":\"ok\"}", Encoding.UTF8, "application/json")
+        });
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost:11434/")
+        };
+        var client = new OllamaChatClient(
+            httpClient,
+            Microsoft.Extensions.Options.Options.Create(new OllamaOptions
+            {
+                GeneratePath = "api/generate",
+                Model = "qwen2.5:7b-instruct",
+                MaxOutputCharacters = 1200
+            }),
+            NullLogger<OllamaChatClient>.Instance);
+
+        await client.ExecuteAsync(CreateRequest(QueryMode.General, "ja-JP"), CancellationToken.None);
+
+        var payload = await handler.GetPayloadAsync();
+        Assert.Contains("Respond in Japanese", payload);
+        Assert.Contains("User locale: ja-JP", payload);
+    }
+
+    [Fact]
+    public async Task DifyClient_SendsLocaleMetadataInInputs()
+    {
+        var handler = new CapturingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"answer\":\"ok\",\"conversation_id\":\"conv-1\"}", Encoding.UTF8, "application/json")
+        });
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://api.dify.ai/v1/")
+        };
+        var client = new DifyChatClient(
+            httpClient,
+            Microsoft.Extensions.Options.Options.Create(new DifyOptions
+            {
+                ApiKey = "test-key",
+                ChatPath = "chat-messages",
+                UserPrefix = "discord"
+            }),
+            NullLogger<DifyChatClient>.Instance);
+
+        await client.ExecuteAsync(CreateRequest(QueryMode.General, "en-US"), conversationState: null, CancellationToken.None);
+
+        var payload = await handler.GetPayloadAsync();
+        Assert.Contains("\"user_locale\":\"en-US\"", payload);
+        Assert.Contains("\"response_language\":\"English (United States)\"", payload);
+    }
+
+    private static ChatRequest CreateRequest(QueryMode mode, string? userLocale = null)
     {
         return new ChatRequest(
             Prompt: "test prompt",
@@ -116,6 +209,7 @@ public sealed class ChatOrchestratorTests
             QueryMode: mode,
             GuildId: 999,
             CorrelationId: "corr-1",
+            UserLocale: userLocale,
             CommandName: "/chat");
     }
 
@@ -171,6 +265,31 @@ public sealed class ChatOrchestratorTests
         {
             CallCount++;
             return Task.FromResult(_result);
+        }
+    }
+
+    private sealed class CapturingHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responseFactory;
+        private string? _payload;
+
+        public CapturingHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
+        {
+            _responseFactory = responseFactory;
+        }
+
+        public Task<string> GetPayloadAsync()
+        {
+            return Task.FromResult(_payload ?? string.Empty);
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            _payload = request.Content is null
+                ? string.Empty
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+
+            return _responseFactory(request);
         }
     }
 }

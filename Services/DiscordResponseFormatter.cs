@@ -16,11 +16,12 @@ public sealed class DiscordResponseFormatter : IDiscordResponseFormatter
 
     public string Format(ChatResult result, bool showDegradedWarning)
     {
-        var message = result.ResponseText ?? _options.UnavailableMessage;
+        var message = result.ResponseText ?? ChatLocaleHelper.GetUnavailableMessage(result.UserLocale, _options);
 
         if (result.Outcome == ChatOutcome.Degraded && showDegradedWarning)
         {
-            message = $"{_options.DegradedWarningMessage}\n\n{message}";
+            var warningMessage = ChatLocaleHelper.GetDegradedWarningMessage(result.UserLocale, _options);
+            message = $"{warningMessage}\n\n{message}";
         }
 
         return message.Length <= MaxDiscordMessageLength

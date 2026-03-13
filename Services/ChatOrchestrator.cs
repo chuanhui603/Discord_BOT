@@ -53,7 +53,11 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         var correlationId = string.IsNullOrWhiteSpace(request.CorrelationId)
             ? Guid.NewGuid().ToString("N")
             : request.CorrelationId;
-        var normalizedRequest = request with { CorrelationId = correlationId };
+        var normalizedRequest = request with
+        {
+            CorrelationId = correlationId,
+            UserLocale = ChatLocaleHelper.NormalizeLocale(request.UserLocale)
+        };
         var conversationScope = ConversationScope.FromRequest(normalizedRequest);
         var startedAt = DateTimeOffset.UtcNow;
 
@@ -101,6 +105,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
                     ChatResponseSource.Fallback,
                     fallbackResult.Text,
                     SessionUpdated: false,
+                    UserLocale: normalizedRequest.UserLocale,
                     ErrorClass: primaryError,
                     FailureStage: ChatFailureStage.Fallback,
                     ProviderConversationId: fallbackResult.ProviderConversationId,
@@ -131,7 +136,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         }
 
         var responseText = primaryResult.ResponseKind == ChatResponseKind.Guidance && string.IsNullOrWhiteSpace(primaryResult.Text)
-            ? _fallbackOptions.GuidanceMessage
+            ? ChatLocaleHelper.GetGuidanceMessage(request.UserLocale, _fallbackOptions)
             : primaryResult.Text;
 
         return new ChatResult(
@@ -140,6 +145,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             ChatResponseSource.Primary,
             responseText,
             sessionUpdated,
+            UserLocale: request.UserLocale,
             ErrorClass: primaryResult.ErrorClass,
             FailureStage: null,
             ProviderConversationId: primaryResult.ProviderConversationId,
@@ -160,8 +166,9 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             ChatOutcome.Failed,
             ChatResponseKind.Unavailable,
             ChatResponseSource.System,
-            _fallbackOptions.UnavailableMessage,
+            ChatLocaleHelper.GetUnavailableMessage(request.UserLocale, _fallbackOptions),
             sessionUpdated,
+            UserLocale: request.UserLocale,
             ErrorClass: errorClass,
             FailureStage: failureStage,
             ProviderConversationId: null,

@@ -2,7 +2,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Discord_BOT.Clients;
-using Discord_BOT.Commands;
 using Discord_BOT.Options;
 using Discord_BOT.Services;
 using Discord_BOT.Stores;
