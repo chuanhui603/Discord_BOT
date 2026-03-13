@@ -6,9 +6,6 @@ namespace Discord_BOT.Services;
 public static class ChatLocaleHelper
 {
     private const string DefaultLocale = "zh-TW";
-    private const string DefaultGuidanceMessage = "目前沒有足夠依據可以可靠回答，請提供更具體的文件名、條文或關鍵字。";
-    private const string DefaultUnavailableMessage = "主要服務暫時無法使用，請稍後再試。";
-    private const string DefaultDegradedWarningMessage = "警告：目前使用備援模式，以下回覆可能較簡化，且不一定依據知識庫內容。";
 
     public static string NormalizeLocale(string? userLocale)
     {
@@ -96,9 +93,9 @@ public static class ChatLocaleHelper
                 "O serviço principal está temporariamente indisponível. Tente novamente mais tarde.",
                 "Aviso: o modo de contingência está ativo, então a resposta pode ser simplificada e talvez não reflita a base de conhecimento."),
             _ => new LocalizedFallbackText(
-                Coalesce(options.GuidanceMessage, DefaultGuidanceMessage),
-                Coalesce(options.UnavailableMessage, DefaultUnavailableMessage),
-                Coalesce(options.DegradedWarningMessage, DefaultDegradedWarningMessage))
+                Coalesce(options.GuidanceMessage, "目前沒有足夠依據可以可靠回答，請提供更具體的文件名、條文或關鍵字。"),
+                Coalesce(options.UnavailableMessage, "主要服務暫時無法使用，請稍後再試。"),
+                Coalesce(options.DegradedWarningMessage, "警告：目前使用備援模式，以下回覆可能較簡化，且不一定依據知識庫內容。"))
         };
     }
 
