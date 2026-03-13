@@ -6,6 +6,7 @@ using Discord_BOT.Commands;
 using Discord_BOT.Options;
 using Discord_BOT.Services;
 using Discord_BOT.Stores;
+using Microsoft.Extensions.Options;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -31,22 +32,22 @@ builder.Services.AddSingleton(provider => new InteractionService(
 
 builder.Services.AddHttpClient<IDifyChatClient, DifyChatClient>((provider, client) =>
 {
-	var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<DifyOptions>>().Value;
+	var options = provider.GetRequiredService<IOptions<DifyOptions>>().Value;
 	if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var baseAddress))
 	{
 		client.BaseAddress = baseAddress;
 	}
-	client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<FallbackOptions>>().Value.DifyTimeoutSeconds);
+	client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<FallbackOptions>>().Value.DifyTimeoutSeconds);
 	client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 });
 builder.Services.AddHttpClient<IOllamaChatClient, OllamaChatClient>((provider, client) =>
 {
-	var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<OllamaOptions>>().Value;
+	var options = provider.GetRequiredService<IOptions<OllamaOptions>>().Value;
 	if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var baseAddress))
 	{
 		client.BaseAddress = baseAddress;
 	}
-	client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<FallbackOptions>>().Value.OllamaTimeoutSeconds);
+	client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<FallbackOptions>>().Value.OllamaTimeoutSeconds);
 	client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
 });
 
